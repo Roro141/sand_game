@@ -2,18 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Shadow Sandbox</title>
+  <meta name="description" content="Sand pours from the sky and piles up on your webcam silhouette. Runs entirely in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sniglet:wght@400;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main>
-    <h1>Shadow Sandbox</h1>
-    <canvas id="view" width="640" height="480"></canvas>
-    <button id="start">Turn on camera</button>
-    <button id="recapture" hidden>Re-capture background</button>
-    <p id="status" role="status"></p>
-  </main>
+  <div class="app">
+    <header>
+      <h1>Shadow <span>Sandbox</span></h1>
+      <p class="tagline">Sand falls from the sky. You're the ground.</p>
+    </header>
+
+    <div class="stage" id="stage">
+      <canvas id="view" width="800" height="600" aria-label="Sand simulation"></canvas>
+
+      <div class="overlay" id="intro">
+        <div class="card">
+          <h2>Catch sand with your shadow</h2>
+          <ol class="steps">
+            <li>Turn on your camera.</li>
+            <li>Lean out of the picture for 3 seconds so it can learn the empty room.</li>
+            <li>Lean back in. Sand lands on you. Raise your hands to catch it, swipe to fling it.</li>
+          </ol>
+          <button class="btn primary" id="start">Turn on camera</button>
+          <button class="link" id="pointerMode">No camera? Use your mouse or finger as the shadow</button>
+          <p class="status" id="status" role="status"></p>
+          <p class="fine">The video never leaves your computer.</p>
+        </div>
+      </div>
+
+      <div class="overlay countdown" id="capture" hidden>
+        <div class="card">
+          <p class="eyebrow">Learning the empty room</p>
+          <h2>Lean out of the picture</h2>
+          <div class="count" id="count">3</div>
+        </div>
+      </div>
+
+      <p class="grain-count" id="grains" aria-live="off"></p>
+    </div>
+
+    <div class="toolbar" role="toolbar" aria-label="Sandbox controls">
+      <div class="group" role="radiogroup" aria-label="Material">
+        <button class="chip" data-material="sand" aria-pressed="true">Sand</button>
+        <button class="chip" data-material="water" aria-pressed="false">Water</button>
+      </div>
+      <div class="group" aria-label="Sand color">
+        <button class="swatch" data-palette="dune" aria-pressed="true" title="Dune" aria-label="Dune colors"></button>
+        <button class="swatch" data-palette="sunset" aria-pressed="false" title="Sunset" aria-label="Sunset colors"></button>
+        <button class="swatch" data-palette="candy" aria-pressed="false" title="Candy" aria-label="Candy colors"></button>
+        <button class="swatch" data-palette="mint" aria-pressed="false" title="Mint" aria-label="Mint colors"></button>
+      </div>
+      <div class="group" role="radiogroup" aria-label="Pour style">
+        <button class="chip" data-pour="streams" aria-pressed="true">Streams</button>
+        <button class="chip" data-pour="rain" aria-pressed="false">Rain</button>
+        <button class="chip" data-pour="off" aria-pressed="false">Stop<kbd>P</kbd></button>
+      </div>
+      <div class="group">
+        <button class="chip" id="clear">Clear<kbd>C</kbd></button>
+        <button class="chip" id="snapshot">Snapshot<kbd>S</kbd></button>
+        <button class="chip" id="recapture" hidden>Re-learn room<kbd>B</kbd></button>
+        <button class="chip" id="debug" aria-pressed="false">What the camera sees<kbd>D</kbd></button>
+      </div>
+      <label class="group slider" for="sensitivity">
+        <span>Sensitivity</span>
+        <input type="range" id="sensitivity" min="30" max="150" value="110" aria-describedby="sens-help">
+        <span class="help" id="sens-help">Lower it if your shadow has holes; raise it if the room shows up as you.</span>
+      </label>
+    </div>
+
+    <footer>
+      Made with plain JavaScript: background subtraction, frame differencing and a falling-sand cellular automaton. No AI, no libraries.
+    </footer>
+  </div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

@@ -37,15 +37,23 @@ export class Renderer {
   setPalette(name) { this.palette = lookup(PALETTES[name] || PALETTES.dune); }
 
   // camera: RGBA frame or null; body: silhouette mask or null.
-  draw(world, camera, body, { showCamera = true, debugMotion = null } = {}) {
+  // In debug mode we show what the computer "sees": the camera in grey,
+  // the detected body in blue and moving pixels in white.
+  draw(world, camera, body, { showCamera = true, debug = false, motion = null } = {}) {
     const out = this.image.data, cells = world.cells, shade = world.shade;
     const pal = this.palette, water = this.water;
     for (let k = 0, i = 0; k < cells.length; k++, i += 4) {
       const c = cells[k];
       let r, g, b;
-      if (c === SAND) [r, g, b] = pal[shade[k] % pal.length];
+      if (debug) {
+        const lum = camera ? (camera[i] + camera[i + 1] + camera[i + 2]) / 3 * 0.45 : 20;
+        if (motion && motion[k]) { r = 255; g = 255; b = 255; }
+        else if (body && body[k]) { r = 60; g = 140; b = 255; }
+        else if (c !== 0) { r = 120; g = 100; b = 50; }
+        else { r = lum; g = lum; b = lum; }
+      }
+      else if (c === SAND) [r, g, b] = pal[shade[k] % pal.length];
       else if (c === WATER) [r, g, b] = water[shade[k] % water.length];
-      else if (debugMotion && debugMotion[k]) { r = 255; g = 255; b = 255; }
       else if (body && body[k]) {
         // The player: a deep shadow with a hint of the camera image.
         const lum = camera ? (camera[i] + camera[i + 1] + camera[i + 2]) / 3 : 0;
