@@ -25,11 +25,12 @@ export function mulberry32(seed) {
 }
 
 export class SandWorld {
-  constructor(width, height, { random = Math.random, drain = true } = {}) {
+  constructor(width, height, { random = Math.random, drain = true, grip = 0 } = {}) {
     this.width = width;
     this.height = height;
     this.random = random;
     this.drain = drain;                       // grains that reach the bottom disappear
+    this.grip = grip;                         // 0..1: chance sand on a solid stays put instead of sliding
     this.cells = new Uint8Array(width * height);
     this.shade = new Uint8Array(width * height); // per-grain color variation, 0..255
     this.stamp = new Uint32Array(width * height); // last frame a cell was moved into
@@ -98,6 +99,10 @@ export class SandWorld {
 
         // 1. Straight down.
         if (this.canEnter(x, y + 1, type, solid)) { this.swap(i, i + W); continue; }
+
+        // Friction: sand sitting directly on something solid (the player)
+        // usually stays, so it can pile up on heads and shoulders.
+        if (type === SAND && solid[i + W] && this.random() < this.grip) continue;
 
         // 2. Diagonally down, in a random order.
         const dir = this.random() < 0.5 ? -1 : 1;

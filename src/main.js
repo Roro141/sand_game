@@ -11,6 +11,7 @@ const CAPTURE_SECONDS = 3;        // how long to learn the empty room
 const STREAM_RATE = 14;           // grains per frame in "streams" mode
 const RAIN_RATE = 10;             // grains per frame in "rain" mode
 const POINTER_RADIUS = 9;         // size of the mouse/finger shadow, in cells
+const GRIP = 0.85;                // how well sand sticks to you (0 = slippery, 1 = glued)
 
 // ---- Elements -----------------------------------------------------------
 const $ = (id) => document.getElementById(id);
@@ -26,7 +27,7 @@ const body = new Uint8Array(N);     // cleaned silhouette = solid ground
 const motion = new Uint8Array(N);   // pixels moving right now
 let prevFrame = null;
 
-const world = new SandWorld(GRID_W, GRID_H);
+const world = new SandWorld(GRID_W, GRID_H, { grip: GRIP });
 const renderer = new Renderer(GRID_W, GRID_H);
 
 const settings = { material: SAND, pour: "streams", debug: false, bgThreshold: 70 };

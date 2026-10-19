@@ -65,6 +65,28 @@ test("solid cells hold sand up", () => {
   assert.equal(w.get(2, 5), SAND, "resting on the shelf");
 });
 
+test("grip keeps sand resting on a solid peak from sliding off", () => {
+  const peak = new Uint8Array(5 * 6);
+  peak[3 * 5 + 2] = 1; // one solid cell: the top of a head
+  const slippery = world(5, 6);
+  slippery.set(2, 2, SAND);
+  run(slippery, 10, peak);
+  assert.notEqual(slippery.get(2, 2), SAND, "without grip it rolls off");
+
+  const grippy = world(5, 6, { grip: 1 });
+  grippy.set(2, 2, SAND);
+  run(grippy, 10, peak);
+  assert.equal(grippy.get(2, 2), SAND, "with full grip it stays");
+});
+
+test("grip does not stop sand sliding off other sand", () => {
+  const w = world(9, 6, { grip: 1 });
+  w.set(4, 5, SAND);
+  w.set(4, 4, SAND);
+  run(w, 10);
+  assert.equal(w.get(4, 4), EMPTY, "top grain slid off the grain below");
+});
+
 test("draining removes grains that reach the bottom", () => {
   const w = world(5, 6, { drain: true });
   w.set(2, 0, SAND);
