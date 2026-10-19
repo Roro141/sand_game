@@ -1,10 +1,14 @@
 import { startCamera, createFrameGrabber } from "./camera.js";
 import { BackgroundModel, majorityFilter, frameDifference } from "./vision.js";
+import { SandWorld, SAND, WATER } from "./sand.js";
+import { liftGrains, splash } from "./interact.js";
+import { Renderer } from "./render.js";
 
 const GRID_W = 200, GRID_H = 150;
 const BG_THRESHOLD = 70;      // how different from the empty scene counts as "you"
 const MOTION_THRESHOLD = 90;  // how much change between frames counts as "moving"
 const CAPTURE_SECONDS = 3;
+const POUR_RATE = 14;         // grains added per frame
 
 const view = document.getElementById("view");
 const ctx = view.getContext("2d");
@@ -12,19 +16,19 @@ const status = document.getElementById("status");
 const recaptureBtn = document.getElementById("recapture");
 const video = document.createElement("video");
 
-const small = document.createElement("canvas");
-small.width = GRID_W; small.height = GRID_H;
-const smallCtx = small.getContext("2d");
-const image = smallCtx.createImageData(GRID_W, GRID_H);
-
 const background = new BackgroundModel(GRID_W, GRID_H);
-let rawMask = new Uint8Array(GRID_W * GRID_H);
-let body = new Uint8Array(GRID_W * GRID_H);     // cleaned silhouette
-let motion = new Uint8Array(GRID_W * GRID_H);   // pixels moving right now
+const rawMask = new Uint8Array(GRID_W * GRID_H);
+const body = new Uint8Array(GRID_W * GRID_H);     // cleaned silhouette = solid ground
+const motion = new Uint8Array(GRID_W * GRID_H);   // pixels moving right now
+const noBody = new Uint8Array(GRID_W * GRID_H);
 let prevFrame = null;
 
+const world = new SandWorld(GRID_W, GRID_H);
+const renderer = new Renderer(GRID_W, GRID_H);
+let material = SAND;
+
 let grab = null;
-let captureUntil = 0; // while now < captureUntil we are learning the background
+let captureUntil = 0;
 
 function beginCapture() {
   background.reset();
@@ -44,11 +48,24 @@ document.getElementById("start").addEventListener("click", async () => {
 });
 recaptureBtn.addEventListener("click", beginCapture);
 
+// Sand pours from three nozzles that drift slowly, so it doesn't always
+// land in the same spot.
+function pour(now) {
+  for (let n = 0; n < POUR_RATE; n++) {
+    const nozzle = n % 3;
+    const center = GRID_W * (0.2 + 0.3 * nozzle) + Math.sin(now / 1500 + nozzle * 2) * GRID_W * 0.08;
+    const x = Math.round(center + (Math.random() - 0.5) * 6);
+    const y = Math.floor(Math.random() * 3);
+    if (world.get(x, y) === 0) world.set(x, y, material);
+  }
+}
+
 function frame(now) {
-  const pixels = grab && grab();
+  const pixels = grab ? grab() : null;
+  let tracking = false;
+
   if (pixels) {
     if (now < captureUntil) {
-      // Learning phase: skip the first few frames while the camera settles.
       if (captureUntil - now < (CAPTURE_SECONDS - 0.5) * 1000) background.addSample(pixels);
       status.textContent = `Lean out of the frame… ${Math.ceil((captureUntil - now) / 1000)}`;
     } else if (background.ready) {
@@ -56,24 +73,23 @@ function frame(now) {
       background.subtract(pixels, BG_THRESHOLD, rawMask);
       majorityFilter(rawMask, GRID_W, GRID_H, 5, body);
       background.adapt(pixels, body, 0.004);
+      tracking = true;
     }
     if (prevFrame) frameDifference(prevFrame, pixels, GRID_W, GRID_H, MOTION_THRESHOLD, motion);
     prevFrame = prevFrame || new Uint8ClampedArray(pixels.length);
     prevFrame.set(pixels);
-
-    // Debug view: dim camera, silhouette in blue, motion in white.
-    const out = image.data;
-    for (let k = 0, i = 0; k < body.length; k++, i += 4) {
-      const grey = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3 * 0.35;
-      if (motion[k]) { out[i] = 255; out[i + 1] = 255; out[i + 2] = 255; }
-      else if (body[k] && background.ready && now >= captureUntil) { out[i] = 60; out[i + 1] = 140; out[i + 2] = 255; }
-      else { out[i] = grey; out[i + 1] = grey; out[i + 2] = grey; }
-      out[i + 3] = 255;
-    }
-    smallCtx.putImageData(image, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(small, 0, 0, view.width, view.height);
   }
+
+  const solid = tracking ? body : noBody;
+  if (tracking) {
+    liftGrains(world, solid);
+    splash(world, motion, solid);
+  }
+  pour(now);
+  world.step(solid);
+
+  renderer.draw(world, pixels, tracking ? body : null);
+  renderer.blitTo(ctx, view.width, view.height);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
